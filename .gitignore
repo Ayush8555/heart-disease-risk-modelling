@@ -1,0 +1,51 @@
+# Environments and caches
+.venv/
+venv/
+env/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ipynb_checkpoints/
+.mypy_cache/
+.ruff_cache/
+*.egg-info/
+
+# Secrets and local configuration
+.env
+.env.*
+*.pem
+*.key
+secrets*
+credentials*
+
+# OS / editor
+.DS_Store
+.idea/
+.vscode/
+
+# Keep the four public processed Phase 2 cohorts visible like Phase 1; ignore the archive and other raw variants.
+data/raw/*
+!data/raw/README.md
+!data/raw/.gitkeep
+!data/raw/heart-disease.names
+!data/raw/processed.cleveland.data
+!data/raw/processed.hungarian.data
+!data/raw/processed.switzerland.data
+!data/raw/processed.va.data
+data/processed/*
+!data/processed/.gitkeep
+
+# Generated run logs and model artefacts
+*.log
+*.pt
+*.pth
+
+# LaTeX build artefacts
+reports/*.aux
+reports/*.log
+reports/*.out
+reports/*.bbl
+reports/*.blg
+reports/*.synctex.gz
+reports/*.fls
+reports/*.fdb_latexmk

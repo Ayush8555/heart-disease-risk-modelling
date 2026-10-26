@@ -1,0 +1,77 @@
+project:
+  name: heart-disease-risk-modelling
+  seed: 42
+
+data:
+  archive: data/raw/heart+disease.zip
+  raw_file: data/raw/processed.cleveland.data
+  processed_dir: data/processed
+  missing_marker: "?"
+  columns: [age, sex, cp, trestbps, chol, fbs, restecg, thalach, exang, oldpeak, slope, ca, thal, num]
+  target_column: num
+  # Original num values 0-4; binary target: 0 -> 0, 1-4 -> 1
+  positive_levels: [1, 2, 3, 4]
+
+cv:
+  outer_folds: 5
+  outer_repeats: 5      # 5x5 repeated stratified CV = 25 identical outer folds per model
+  inner_folds: 5        # inner stratified CV for tuning, on each outer training fold only
+  shuffle: true
+  # Same stratified outer splits are reused for all models.
+
+features:
+  # Types follow data/raw/heart-disease.names (see README, "Preprocessing").
+  continuous: [age, trestbps, chol, thalach, oldpeak]
+  binary: [sex, fbs, exang]
+  ordinal: [ca, slope]            # ca: 0-3 vessels; slope: 1 up, 2 flat, 3 down
+  categorical: [cp, restecg, thal]  # nominal codes; one-hot for LR / SVM / RF / GB
+  # Discretisation for BN / Naive Bayes: train-fold quantile bins (tertiles).
+  discretization:
+    n_bins: 3
+    columns: [age, trestbps, chol, thalach, oldpeak]
+
+models:
+  bayesian_network:
+    target_node: target
+    prior: dirichlet       # Laplace-style smoothing so no parent configuration has an undefined CPD
+    pseudo_count: 1.0
+    missing: error         # error | marginalize (NaN evidence is dropped from inference)
+  naive_bayes:
+    alpha: 1.0             # same Laplace pseudo-count as the BN
+  logistic_regression:
+    C: 1.0             # inverse regularisation strength; smaller = stronger L2
+  svm:
+    C: 1.0             # regularisation; kernel = rbf (set in pipeline)
+    gamma: scale       # 1 / (n_features * X.var()), a standard default for standardised data
+  random_forest:
+    n_estimators: 200
+    max_depth: 3
+  gradient_boosting:
+    learning_rate: 0.1
+    n_estimators: 100
+    max_depth: 2
+
+tuning:
+  # Small grids; selection criterion = inner out-of-fold log loss (training data only).
+  criterion: log_loss
+  # Phase 1 grids, declared before the Phase 1 run. The BN / NB grids reach 10 because the earlier
+  # run picked the top value (2) in every fold.
+  naive_bayes: {model__alpha: [0.5, 1.0, 2.0, 5.0, 10.0]}
+  bayesian_network: {model__pseudo_count: [0.5, 1.0, 2.0, 5.0, 10.0]}
+  logistic_regression: {model__C: [0.01, 0.1, 1, 10]}
+  svm: {model__C: [0.1, 1, 10], model__gamma: [scale, 0.01]}
+  random_forest: {model__n_estimators: [200, 500], model__max_depth: [3, 5, null]}
+  gradient_boosting: {model__learning_rate: [0.05, 0.1], model__n_estimators: [100, 200], model__max_depth: [2, 3]}
+
+evaluation:
+  n_bootstrap: 2000
+  ci_level: 0.95
+  primary_threshold: 0.5            # fixed a priori for hard-label metrics
+  secondary_threshold: train_youden # max(sens + spec - 1) on inner OOF predictions of the training fold
+  metrics: [roc_auc, pr_auc, sensitivity, specificity, brier_score, calibration]
+  threshold: 0.5
+  calibration_bins: 10
+
+paths:
+  figures: results/figures
+  metrics: results/metrics
